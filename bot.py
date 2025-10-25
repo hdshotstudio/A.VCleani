@@ -12,7 +12,7 @@ from telegram.ext import (
 import db
 
 # ========== CONFIG ==========
-BOT_TOKEN = "PUT_YOUR_BOT_TOKEN_HERE"  # ← вставь токен BotFather
+BOT_TOKEN = "7727860907:AAG1cbroPiuEPUF0w9QpxAVMeKPq9svo1x0"  # ← вставь токен BotFather
 ADMIN_IDS = [5570877977, 1214168275]   # двойная админка
 COMPANY_NAME = "AV Cleaning CY"
 INSTAGRAM_URL = "https://www.instagram.com/a.vcleaning.cy/"
