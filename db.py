@@ -1,76 +1,56 @@
-
-# db.py
 import aiosqlite
-from typing import Optional, List, Dict
 
-DB_FILE = "bookings.db"
+DB_NAME = "bookings.db"
 
 CREATE_BOOKINGS = """
-
 CREATE TABLE IF NOT EXISTS bookings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
+    user_id INTEGER,
     username TEXT,
-    service TEXT NOT NULL,
-    date TEXT NOT NULL,        -- ISO date YYYY-MM-DD
+    service TEXT,
+    date TEXT,
     address TEXT,
     phone TEXT,
-    status TEXT DEFAULT 'pending', -- pending / accepted / cancelled / done
-    created_at TEXT DEFAULT (datetime('now'))
-);
-\"\"\"
+    status TEXT DEFAULT 'pending'
+)
+"""
 
 async def init_db():
-    async with aiosqlite.connect(DB_FILE) as db:
+    async with aiosqlite.connect(DB_NAME) as db:
         await db.execute(CREATE_BOOKINGS)
         await db.commit()
 
-async def add_booking(booking: Dict) -> int:
-    query = \"\"\"
-    INSERT INTO bookings (user_id, username, service, date, address, phone)
-    VALUES (?, ?, ?, ?, ?, ?)
-    \"\"\"
-    async with aiosqlite.connect(DB_FILE) as db:
-        cur = await db.execute(query, (
-            booking['user_id'],
-            booking.get('username'),
-            booking['service'],
-            booking['date'],
-            booking.get('address'),
-            booking.get('phone'),
-        ))
+async def add_booking(b):
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute(
+            "INSERT INTO bookings (user_id, username, service, date, address, phone) VALUES (?, ?, ?, ?, ?, ?)",
+            (b["user_id"], b["username"], b["service"], b["date"], b["address"], b["phone"])
+        )
         await db.commit()
-        return cur.lastrowid
+        return cursor.lastrowid
 
-async def get_booking(booking_id: int) -> Optional[Dict]:
-    async with aiosqlite.connect(DB_FILE) as db:
-        cur = await db.execute("SELECT * FROM bookings WHERE id = ?", (booking_id,))
-        row = await cur.fetchone()
-        if not row:
-            return None
-        cols = [c[0] for c in cur.description]
-        return dict(zip(cols, row))
+async def get_booking(bid):
+    async with aiosqlite.connect(DB_NAME) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute("SELECT * FROM bookings WHERE id = ?", (bid,))
+        row = await cursor.fetchone()
+        return dict(row) if row else None
 
-async def list_bookings(status: Optional[str] = None) -> List[Dict]:
-    async with aiosqlite.connect(DB_FILE) as db:
-        if status:
-            cur = await db.execute("SELECT * FROM bookings WHERE status = ? ORDER BY created_at DESC", (status,))
-        else:
-            cur = await db.execute("SELECT * FROM bookings ORDER BY created_at DESC")
-        rows = await cur.fetchall()
-        cols = [c[0] for c in cur.description]
-        return [dict(zip(cols, r)) for r in rows]
+async def list_bookings():
+    async with aiosqlite.connect(DB_NAME) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute("SELECT * FROM bookings ORDER BY id DESC")
+        rows = await cursor.fetchall()
+        return [dict(r) for r in rows]
 
-async def update_status(booking_id: int, status: str):
-    async with aiosqlite.connect(DB_FILE) as db:
-        await db.execute("UPDATE bookings SET status = ? WHERE id = ?", (status, booking_id))
+async def user_bookings(uid):
+    async with aiosqlite.connect(DB_NAME) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute("SELECT * FROM bookings WHERE user_id = ? ORDER BY id DESC", (uid,))
+        rows = await cursor.fetchall()
+        return [dict(r) for r in rows]
+
+async def update_status(bid, status):
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("UPDATE bookings SET status = ? WHERE id = ?", (status, bid))
         await db.commit()
-
-async def user_bookings(user_id: int) -> List[Dict]:
-    async with aiosqlite.connect(DB_FILE) as db:
-        cur = await db.execute("SELECT * FROM bookings WHERE user_id = ? ORDER BY created_at DESC", (user_id,))
-        rows = await cur.fetchall()
-        cols = [c[0] for c in cur.description]
-        return [dict(zip(cols, r)) for r in rows]
-
-"""
